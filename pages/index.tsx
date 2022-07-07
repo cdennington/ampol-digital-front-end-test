@@ -19,8 +19,10 @@ const Home: NextPage = () => {
       const storedUrls = localStorage.getItem('urls');
 
       if (storedUrls !== null) {
-        const parseStoredUrls = JSON.parse(storedUrls);
-        setListUrls(parseStoredUrls);
+        if (storedUrls.length === 0) {
+          const parseStoredUrls = JSON.parse(storedUrls);
+          setListUrls(parseStoredUrls);
+        }
       }
     }
 
@@ -32,6 +34,10 @@ const Home: NextPage = () => {
   const isValidHttpUrl = () => {
     let newUrl;
 
+    if (url.current === '') {
+      return false;
+    }
+
     try {
       newUrl = new URL(url.current);
     } catch (err) {
@@ -39,7 +45,7 @@ const Home: NextPage = () => {
       return false;
     }
 
-    return newUrl.protocol === "http:" || newUrl.protocol === "https:";
+    return newUrl.protocol === 'http:' || newUrl.protocol === 'https:';
   };
 
   const copyText = (e: { preventDefault: () => void; }, i: number) => {
@@ -58,6 +64,20 @@ const Home: NextPage = () => {
       }
     } else {
       toast.error('issue copying URL');
+    }
+  };
+
+  const removeUrl = (e: { preventDefault: () => void; }, i: number) => {
+    e.preventDefault();
+    try {
+      const cloneList = JSON.parse(JSON.stringify(listUrls));
+      cloneList.splice(i, 1);
+      setListUrls(cloneList);
+      localStorage.setItem('urls', JSON.stringify(cloneList));
+      toast.success('URL Deleted');
+    } catch (err) {
+      console.error(err);
+      toast.error('issue deleting URL');
     }
   };
 
@@ -98,14 +118,16 @@ const Home: NextPage = () => {
         </div>
         <button type="submit" className="btn btn-primary">Submit</button>
       </form>
+      {listUrls.length > 0 && <h1>Shortened URLs</h1>}
       {listUrls.map((singleUrl, idx) => (
         <div key={`${singleUrl}${idx}`}>
           <input
             type="text"
-            value={singleUrl}
+            defaultValue={singleUrl}
             ref={el => listItem.current[idx] = el}
           />
           <button type="button" onClick={(e) => copyText(e, idx)}>Copy text</button>
+          <button type="button" onClick={(e) => removeUrl(e, idx)}>Remove URL</button>
         </div>
       ))}
     </div>
