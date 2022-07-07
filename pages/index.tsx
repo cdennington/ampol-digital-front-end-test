@@ -1,6 +1,7 @@
 import React, {
   useRef,
   useState,
+  useEffect,
 } from 'react';
 import type { NextPage } from 'next';
 import toast from 'react-hot-toast';
@@ -11,12 +12,30 @@ const Home: NextPage = () => {
   const url = useRef('');
   const listItem = useRef<Array<HTMLInputElement | null>>([]);
 
+  useEffect(() => {
+    let isMounted = true;
+
+    if (isMounted) {
+      const storedUrls = localStorage.getItem('urls');
+
+      if (storedUrls !== null) {
+        const parseStoredUrls = JSON.parse(storedUrls);
+        setListUrls(parseStoredUrls);
+      }
+    }
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   const isValidHttpUrl = () => {
     let newUrl;
 
     try {
       newUrl = new URL(url.current);
-    } catch (_) {
+    } catch (err) {
+      console.error(err);
       return false;
     }
 
@@ -34,7 +53,7 @@ const Home: NextPage = () => {
         navigator.clipboard.writeText(copyText.value);
         toast.success('URL copied');
       } catch (err) {
-        console.warn(err);
+        console.error(err);
         toast.error('issue copying URL');
       }
     } else {
@@ -53,6 +72,7 @@ const Home: NextPage = () => {
             const cloneList = JSON.parse(JSON.stringify(listUrls));
             cloneList.push(data.result.full_share_link);
             setListUrls(cloneList);
+            localStorage.setItem('urls', JSON.stringify(cloneList));
             toast.success('URL shortened');
           } else {
             toast.error(data.error);
@@ -79,14 +99,14 @@ const Home: NextPage = () => {
         <button type="submit" className="btn btn-primary">Submit</button>
       </form>
       {listUrls.map((singleUrl, idx) => (
-        <>
+        <div key={`${singleUrl}${idx}`}>
           <input
             type="text"
             value={singleUrl}
             ref={el => listItem.current[idx] = el}
           />
           <button type="button" onClick={(e) => copyText(e, idx)}>Copy text</button>
-        </>
+        </div>
       ))}
     </div>
   )
