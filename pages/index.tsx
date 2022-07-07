@@ -5,9 +5,10 @@ import React, {
 } from 'react';
 import type { NextPage } from 'next';
 import toast from 'react-hot-toast';
-import styles from '../styles/Home.module.css';
+import UrlList from '../components/UrlList';
 
 const Home: NextPage = () => {
+  const [loading, setLoading] = useState(false);
   const [listUrls, setListUrls] = useState([]);
   const url = useRef('');
   const listItem = useRef<Array<HTMLInputElement | null>>([]);
@@ -19,8 +20,8 @@ const Home: NextPage = () => {
       const storedUrls = localStorage.getItem('urls');
 
       if (storedUrls !== null) {
-        if (storedUrls.length === 0) {
-          const parseStoredUrls = JSON.parse(storedUrls);
+        const parseStoredUrls = JSON.parse(storedUrls);
+        if (parseStoredUrls.length > 0) {
           setListUrls(parseStoredUrls);
         }
       }
@@ -48,43 +49,11 @@ const Home: NextPage = () => {
     return newUrl.protocol === 'http:' || newUrl.protocol === 'https:';
   };
 
-  const copyText = (e: { preventDefault: () => void; }, i: number) => {
-    e.preventDefault();
-    const copyText = listItem.current[i];
-
-    if (typeof copyText !== 'undefined' && copyText !== null) {
-      try {
-        copyText.select();
-        copyText.setSelectionRange(0, 99999); /* For mobile devices */
-        navigator.clipboard.writeText(copyText.value);
-        toast.success('URL copied');
-      } catch (err) {
-        console.error(err);
-        toast.error('issue copying URL');
-      }
-    } else {
-      toast.error('issue copying URL');
-    }
-  };
-
-  const removeUrl = (e: { preventDefault: () => void; }, i: number) => {
-    e.preventDefault();
-    try {
-      const cloneList = JSON.parse(JSON.stringify(listUrls));
-      cloneList.splice(i, 1);
-      setListUrls(cloneList);
-      localStorage.setItem('urls', JSON.stringify(cloneList));
-      toast.success('URL Deleted');
-    } catch (err) {
-      console.error(err);
-      toast.error('issue deleting URL');
-    }
-  };
-
   const createShortUrl = (e: { preventDefault: () => void; }) => {
     e.preventDefault();
 
     if (isValidHttpUrl()) {
+      setLoading(true);
       fetch(`https://api.shrtco.de/v2/shorten?url=${encodeURIComponent(url.current)}`)
         .then((response) => response.json())
         .then((data) => {
@@ -94,42 +63,44 @@ const Home: NextPage = () => {
             setListUrls(cloneList);
             localStorage.setItem('urls', JSON.stringify(cloneList));
             toast.success('URL shortened');
+            setLoading(false);
           } else {
             toast.error(data.error);
+            setLoading(false);
           }
         });
     } else {
       toast.error('Invalid URL');
+      setLoading(false);
     }
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => url.current = e.target.value;
 
   return (
-    <div className={styles.container}>
-      <form onSubmit={(e) => createShortUrl(e)}>
-        <div>
-          <label htmlFor="link" className="form-label">Enter a Link:</label>
-          <input
-            type="text"
-            className="form-control"
-            onChange={(e) => { handleInputChange(e); }}
-          />
-        </div>
-        <button type="submit" className="btn btn-primary">Submit</button>
+    <div>
+      <form className="shorten-url-form--wrapper" onSubmit={(e) => createShortUrl(e)}>
+        <label htmlFor="link" className="form-label">Enter a Link:</label>
+        <input
+          type="text"
+          className="form-control"
+          onChange={(e) => { handleInputChange(e); }}
+        />
+        <button type="submit" className={`btn${loading ? ' loading' : ''}`}>
+          <span>Submit</span>
+          <div className="lds-ring">
+            <div />
+            <div />
+            <div />
+            <div />
+          </div>
+        </button>
       </form>
-      {listUrls.length > 0 && <h1>Shortened URLs</h1>}
-      {listUrls.map((singleUrl, idx) => (
-        <div key={`${singleUrl}${idx}`}>
-          <input
-            type="text"
-            defaultValue={singleUrl}
-            ref={el => listItem.current[idx] = el}
-          />
-          <button type="button" onClick={(e) => copyText(e, idx)}>Copy text</button>
-          <button type="button" onClick={(e) => removeUrl(e, idx)}>Remove URL</button>
-        </div>
-      ))}
+      <UrlList
+        listItem={listItem}
+        setListUrls={setListUrls}
+        listUrls={listUrls}
+      />
     </div>
   )
 }
